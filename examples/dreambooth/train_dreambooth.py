@@ -741,8 +741,8 @@ def main(args):
                 sub_dir = "unet" if type(model) == type(unet) else "text_encoder"
                 model.save_pretrained(os.path.join(output_dir, sub_dir))
 
-                # make sure to pop weight so that corresponding model is not saved again
-                weights.pop()
+            # Clear all weights so that the corresponding model is not saved again.
+            weights.clear()
 
         def load_model_hook(models, input_dir):
             while len(models) > 0:
