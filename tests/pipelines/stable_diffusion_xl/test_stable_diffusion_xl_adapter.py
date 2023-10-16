@@ -48,19 +48,19 @@ class StableDiffusionXLAdapterPipelineFastTests(PipelineTesterMixin, unittest.Te
     def get_dummy_components(self, adapter_type="full_adapter_xl"):
         torch.manual_seed(0)
         unet = UNet2DConditionModel(
-            block_out_channels=(32, 64),
+            block_out_channels=(32, 64, 128),
             layers_per_block=2,
             sample_size=32,
             in_channels=4,
             out_channels=4,
-            down_block_types=("DownBlock2D", "CrossAttnDownBlock2D"),
-            up_block_types=("CrossAttnUpBlock2D", "UpBlock2D"),
+            down_block_types=("DownBlock2D", "CrossAttnDownBlock2D", "CrossAttnDownBlock2D"),
+            up_block_types=("CrossAttnUpBlock2D", "CrossAttnUpBlock2D", "UpBlock2D"),
             # SD2-specific config below
-            attention_head_dim=(2, 4),
+            attention_head_dim=(2, 4, 8),
             use_linear_projection=True,
             addition_embed_type="text_time",
             addition_time_embed_dim=8,
-            transformer_layers_per_block=(1, 2),
+            transformer_layers_per_block=(1, 2, 2),
             projection_class_embeddings_input_dim=80,  # 6 * 8 + 32
             cross_attention_dim=64,
         )
@@ -101,10 +101,15 @@ class StableDiffusionXLAdapterPipelineFastTests(PipelineTesterMixin, unittest.Te
 
         text_encoder_2 = CLIPTextModelWithProjection(text_encoder_config)
         tokenizer_2 = CLIPTokenizer.from_pretrained("hf-internal-testing/tiny-random-clip")
+
+        # Note: For the 'full_adapter_xl' T2I-Adapters initialized below, we
+        # want to test with at least 3 T2I-Adapter blocks
+        # (i.e. len(channels) == 3). The 3rd block is the only block that
+        # downsamples, so we want to be sure to exercise it in the tests.
         if adapter_type == "full_adapter_xl":
             adapter = T2IAdapter(
                 in_channels=3,
-                channels=[32, 64],
+                channels=[32, 64, 128],
                 num_res_blocks=2,
                 downscale_factor=4,
                 adapter_type=adapter_type,
@@ -114,14 +119,14 @@ class StableDiffusionXLAdapterPipelineFastTests(PipelineTesterMixin, unittest.Te
                 [
                     T2IAdapter(
                         in_channels=3,
-                        channels=[32, 64],
+                        channels=[32, 64, 128],
                         num_res_blocks=2,
                         downscale_factor=4,
                         adapter_type="full_adapter_xl",
                     ),
                     T2IAdapter(
                         in_channels=3,
-                        channels=[32, 64],
+                        channels=[32, 64, 128],
                         num_res_blocks=2,
                         downscale_factor=4,
                         adapter_type="full_adapter_xl",
@@ -180,7 +185,7 @@ class StableDiffusionXLAdapterPipelineFastTests(PipelineTesterMixin, unittest.Te
 
         assert image.shape == (1, 64, 64, 3)
         expected_slice = np.array(
-            [0.5752919, 0.6022097, 0.4728038, 0.49861962, 0.57084894, 0.4644975, 0.5193715, 0.5133664, 0.4729858]
+            [0.5555132, 0.61913615, 0.48519748, 0.48236054, 0.55413264, 0.47695872, 0.5215667, 0.4852762, 0.49683923]
         )
         assert np.abs(image_slice.flatten() - expected_slice).max() < 5e-3
 
@@ -240,7 +245,7 @@ class StableDiffusionXLMultiAdapterPipelineFastTests(
 
         assert image.shape == (1, 64, 64, 3)
         expected_slice = np.array(
-            [0.5813032, 0.60995954, 0.47563356, 0.5056669, 0.57199144, 0.4631841, 0.5176794, 0.51252556, 0.47183886]
+            [0.565959, 0.62957215, 0.49035892, 0.48319364, 0.5567717, 0.47988704, 0.5242058, 0.4849602, 0.4983887]
         )
         assert np.abs(image_slice.flatten() - expected_slice).max() < 5e-3
 
